@@ -1,0 +1,4 @@
+// Committed defaults. ios/Flutter/Local.xcconfig, when present, is included
+// first and overrides these. A personal team cannot register this bundle id.
+APP_BUNDLE_IDENTIFIER=com.yubico.yubioath
+LOCAL_DEVELOPMENT_TEAM=

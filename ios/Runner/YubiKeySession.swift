@@ -63,7 +63,7 @@ final class YubiKeyPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         return FlutterError(
           code: "unsupported",
           message:
-            "NFC needs a physical iPhone. Plug in a USB-C or Lightning YubiKey to use a wired connection.",
+            "NFC is not included in this install. A personal Apple team cannot enable it. A Lightning YubiKey still works.",
           details: nil
         )
       default:

@@ -1,0 +1,7 @@
+// Copy this file to ios/Flutter/Local.xcconfig. The copy is gitignored.
+//
+// Team ID is the 10-character id in Xcode > Settings > Accounts.
+// Use a bundle id that your team can register. A personal team cannot
+// register com.yubico.yubioath, and it cannot provision NFC Tag Reading.
+APP_BUNDLE_IDENTIFIER=com.example.yubioath
+LOCAL_DEVELOPMENT_TEAM=XXXXXXXXXX
