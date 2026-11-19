@@ -12,6 +12,12 @@ https://flutter.dev/desktop
 Development has been done using the "Install from git" method of installing the
 SDK, from the "stable" channel.
 
+The workflows pin the SDK in `.github/workflows/env` (`FLUTTER`). Check out
+that tag. The moving `stable` tip can be newer than the pin. The pin is
+currently 3.47.8. Enable the desktop embedder for the host you are building:
+
+    flutter config --enable-macos-desktop
+
 === Dependencies
 This project uses dependencies specified in `pubspec.yaml` and
 `helper/Cargo.toml`. The corresponding `pubspec.lock` and
@@ -24,6 +30,10 @@ Desktop helper build-cache keys include the lockfile through `helper/**`.
 Rust dependency checks use `cargo-deny` with the policy in
 `helper/deny.toml`. Install it with `cargo install cargo-deny --locked`
 and run `pre-commit run cargo-deny-helper --all-files` from the repository root.
+Install pre-commit first. CI runs it with `pipx run pre-commit`;
+`uv tool install pre-commit` also works. The helper `cargo fmt` and Clippy
+hooks need the `rustfmt` and `clippy` rustup components
+(`rustup component add rustfmt clippy`).
 The hook checks Linux, macOS, and Windows on x64 and ARM64 separately to avoid
 including dependencies from incompatible platform branches. It runs when helper
 manifests, the lockfile, the policy, its check scripts, or the SDK submodule
@@ -73,6 +83,28 @@ require approval for these capabilities.
 Install the Rust targets `aarch64-apple-darwin` and `x86_64-apple-darwin`
 to build the universal helper.
 
+macOS desktop builds need a full Xcode.app. Command Line Tools are not enough:
+`xcodebuild` fails while `xcode-select` points at
+`/Library/Developer/CommandLineTools`. Select Xcode:
+
+    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+Install CocoaPods. `macos/Podfile.lock` records CocoaPods 1.16.2. A newer
+CocoaPods rewrites only the `COCOAPODS:` line and leaves the pod checksums
+unchanged. Do not commit that version stamp unless the pods themselves change.
+
+`flutter build macos` and `flutter run -d macos` download the macOS engine and
+run `pod install`. Running `pod install` yourself, which is required before
+opening the Xcode workspace, needs the engine cached first. The CocoaPods
+post-install hook looks for `darwin-x64/FlutterMacOS.xcframework` even on
+Apple Silicon, and `flutter pub get` does not download it:
+
+    flutter precache --macos
+    (cd macos && pod install)
+
+Open `macos/Runner.xcworkspace`, which CocoaPods creates. `flutter pub get`
+also generates the Swift package under `macos/Flutter/ephemeral/`.
+
 ==== Linux (Debian-based distributions)
 
     $ sudo apt install libu2f-udev pcscd libpcsclite-dev libudev-dev libdbus-1-dev pkg-config libssl-dev
@@ -84,6 +116,10 @@ to build the universal helper.
 
 When prerequisites are installed you build the helper by running `build-helper.sh`
 (or `build-helper.bat` on Windows).
+
+The script reads `helper/target/<triple>/<profile>/authenticator-helper`.
+Unset `CARGO_TARGET_DIR` if it is set. Otherwise both `cargo build` invocations
+succeed and `lipo` fails because the binaries are not in that directory.
 
 NOTE: You will need to re-run the build script if changes have been made to
 Helper's code, or if `flutter clean` has been run.
@@ -98,6 +134,23 @@ To start the app, run:
 
 where <os> is "windows", "macos", "linux", or an attached Android device name.
 use `flutter devices` to list available devices.
+
+On macOS, an iOS simulator build uses the same command with a simulator name.
+iPhone 18 Pro on the installed iOS 27.2 runtime:
+
+    flutter run -d "iPhone 18 Pro"
+
+The iPhone layout uses a tab bar. The simulator cannot see a YubiKey. A
+physical iPhone can: NFC (tap Scan), USB-C smart card on iOS 16 or later, and
+a YubiKey 5Ci over Lightning (`com.yubico.ylp`). The app links YubiKit Swift
+1.4.0 and declares the NFC reader entitlement plus `com.apple.security.smartcard`.
+Plug the phone in, or use the wireless device listed by `flutter devices`, then:
+
+    flutter run -d <iphone>
+
+Enable the iOS embedder first with `flutter config --enable-ios`. The Xcode
+project is `ios/Runner.xcworkspace`, and its bundle id is `com.yubico.yubioath`.
+The deployment target is iOS 16. The desktop helper is not used.
 
 You can add the `--release` flag to run a release build instead of debug.
 
@@ -124,21 +177,58 @@ test, then fail with a device-availability error instead of the usual 30-second 
 Android and NFC tests retain a 30-second wait to allow manual presentation.
 This does not shorten explicit removal, reinsertion, or touch waits within tests.
 
-The integration tests are slower but cover more end-to-end functionality. The
+The integration tests are slower but cover more end-to-end functionality. They
 require an attached YubiKey to run, and will make modifications to the data
-stored on that YubiKey. For instructions on running these tests, see
-link:../integration_test/testdoc.adoc[these instructions].
+stored on that YubiKey. This tree does not contain
+`integration_test/testdoc.adoc`. Use the runner below, and do not run the
+device tests without a YubiKey.
 
 The Python integration-test runner uses `uv` and the native `yubikit` package
 from the SDK revision pinned in `integration_test/runner.py`. Keep that pin
-aligned with the build workflows. The first invocation builds the Python
-extension and requires Rust and the helper's native build dependencies:
+aligned with the build workflows. Install `uv` separately (`brew install uv`
+on macOS). The runner declares Python >= 3.11 and `uv` downloads that
+interpreter; the system Python is not used. The first invocation builds the
+Python extension and requires Rust and the helper's native build dependencies:
 
   uv run --script integration_test/runner.py --help
 
 Device discovery and scripting use `yubikit.device` and `yubikit.scripting`;
 the legacy `ykman` Python modules are no longer used.
 
+
+=== Xcode for external agents
+Xcode 26.3 and later can let an agent outside Xcode build and inspect the open
+project. See
+https://developer.apple.com/documentation/xcode/giving-external-agents-access-to-xcode
+
+In Xcode, choose Settings > Intelligence. Under Model Context Protocol, set
+"Allow External Agents to Use Xcode Tools" to Always or "While Xcode is Open".
+
+The bridge is `xcrun mcpbridge`. Apple's examples register it with Claude Code
+or Codex (`claude mcp add --transport stdio xcode -- xcrun mcpbridge`, or
+`codex mcp add xcode -- xcrun mcpbridge`). Cursor uses a project MCP config
+instead, `.cursor/mcp.json`:
+
+[source,json]
+----
+{
+  "mcpServers": {
+    "xcode": {
+      "command": "xcrun",
+      "args": ["mcpbridge"]
+    }
+  }
+}
+----
+
+Open `macos/Runner.xcworkspace` in Xcode before the agent calls Xcode tools.
+Xcode may prompt once to allow that agent. The Runner scheme prepare step runs
+`$FLUTTER_ROOT/packages/flutter_tools/bin/macos_assemble.sh`. `flutter pub get`
+writes `FLUTTER_ROOT` into `macos/Flutter/ephemeral/Flutter-Generated.xcconfig`.
+
+A restricted sandbox can fail to launch Xcode and report the app as corrupt
+even when `xcodebuild -version` succeeds. Run Xcode, `codesign`, and
+`build-helper.sh` outside that sandbox.
 
 === Packaging for MacOS
 See link:MacOS_Packaging.adoc[MacOS Packaging].
