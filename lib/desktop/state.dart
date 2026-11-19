@@ -15,9 +15,8 @@
  */
 
 import 'dart:async';
-import 'dart:io';
+import 'package:yubico_authenticator/core/sys_io.dart';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,12 +33,10 @@ import '../core/state.dart';
 import 'models.dart';
 import 'rpc.dart';
 
-final _log = Logger('state');
+export 'navigation.dart';
+export 'rpc.dart' show rpcProvider;
 
-// This must be initialized before use in initialize.dart.
-final rpcProvider = FutureProvider<RpcSession>((ref) {
-  throw UnimplementedError();
-});
+final _log = Logger('state');
 
 final rpcStateProvider = StateNotifierProvider<_RpcStateNotifier, RpcState>(
   (ref) => _RpcStateNotifier(ref.watch(rpcProvider).value),
@@ -196,110 +193,3 @@ class _DesktopClipboard extends AppClipboard {
 final desktopSupportedThemesProvider = StateProvider<List<ThemeMode>>(
   (ref) => ThemeMode.values,
 );
-
-class DesktopCurrentDeviceNotifier extends CurrentDeviceNotifier {
-  static const String _lastDevice = 'APP_STATE_LAST_DEVICE';
-
-  @override
-  DeviceNode? build() {
-    SharedPreferences prefs = ref.watch(prefProvider);
-    final devices = ref.watch(attachedDevicesProvider);
-    final lastDevice = prefs.getString(_lastDevice) ?? '';
-
-    var node = devices.where((dev) => dev.path.key == lastDevice).firstOrNull;
-
-    if (node == null) {
-      final parts = lastDevice.split('/');
-      if (parts.firstOrNull == 'pid') {
-        node = devices
-            .whereType<YubiKeyDeviceNode>()
-            .where((e) => e.pid?.value.toString() == parts[1])
-            .firstOrNull;
-      }
-    }
-
-    node = node ?? devices.whereType<YubiKeyDeviceNode>().firstOrNull;
-
-    final devicePaths = devices.map((dev) => dev.path.key);
-    if (node != null && !devicePaths.contains(lastDevice)) {
-      // Update lastDevice with current device when
-      // lastDevice has been removed
-      ref.read(prefProvider).setString(_lastDevice, node.path.key);
-    }
-
-    return node;
-  }
-
-  @override
-  setCurrentDevice(DeviceNode? device) {
-    state = device;
-    ref.read(prefProvider).setString(_lastDevice, device?.path.key ?? '');
-  }
-}
-
-CurrentSectionNotifier desktopCurrentSectionNotifier(Ref ref) {
-  final notifier = DesktopCurrentSectionNotifier(
-    ref.watch(supportedSectionsProvider),
-    ref.watch(prefProvider),
-  );
-  ref.listen<AsyncValue<YubiKeyData>>(currentDeviceDataProvider, (_, data) {
-    notifier._notifyDeviceChanged(data.whenOrNull(data: ((data) => data)));
-  }, fireImmediately: true);
-  return notifier;
-}
-
-class DesktopCurrentSectionNotifier extends CurrentSectionNotifier {
-  final List<Section> _supportedSections;
-  static const String _key = 'APP_STATE_LAST_SECTION';
-  final SharedPreferences _prefs;
-
-  DesktopCurrentSectionNotifier(this._supportedSections, this._prefs)
-    : super(_fromName(_prefs.getString(_key), _supportedSections));
-
-  @override
-  void setCurrentSection(Section section) {
-    state = section;
-    if (section != Section.settings) {
-      // Save current section only if it's not settings
-      _prefs.setString(_key, section.name);
-    }
-  }
-
-  void _notifyDeviceChanged(YubiKeyData? data) {
-    if (state == Section.settings) {
-      return;
-    }
-
-    if (data == null) {
-      state = _supportedSections.first;
-      return;
-    }
-
-    String? lastAppName = _prefs.getString(_key);
-    if (lastAppName != null && lastAppName != state.name) {
-      // Try switching to saved app
-      state = Section.values.firstWhere((app) => app.name == lastAppName);
-    }
-    if (state == Section.passkeys &&
-        state.getAvailability(data) != Availability.enabled) {
-      state = Section.securityKey;
-    }
-    if (state == Section.securityKey &&
-        state.getAvailability(data) != Availability.enabled) {
-      state = Section.passkeys;
-    }
-    if (state.getAvailability(data) != Availability.enabled) {
-      // Default to home if app is not enabled
-      state = Section.home;
-    }
-
-    // Update lastAppName due to device changed
-    _prefs.setString(_key, state.name);
-  }
-
-  static Section _fromName(String? name, List<Section> supportedSections) =>
-      supportedSections.firstWhere(
-        (element) => element.name == name,
-        orElse: () => supportedSections.first,
-      );
-}

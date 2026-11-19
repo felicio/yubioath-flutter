@@ -1,0 +1,18 @@
+[package]
+name = "authenticator-helper-web"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+description = "Browser helper that serves the Yubico Authenticator RPC over WebUSB and WebHID"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+yubikit = { path = "../yubikey-manager/crates/yubikit", default-features = false }
+getrandom = { version = "0.4", features = ["wasm_js"] }
+getrandom02 = { package = "getrandom", version = "0.2", features = ["js"] }
+hex = "0.4"
+serde_json = "1"
+wasm-bindgen = "=0.2.100"

@@ -26,7 +26,6 @@ import '../../core/models.dart';
 import '../../management/models.dart';
 import '../../management/state.dart';
 import '../rpc.dart';
-import '../state.dart';
 
 final _log = Logger('desktop.management.state');
 

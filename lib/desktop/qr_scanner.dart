@@ -18,7 +18,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app/state.dart';
 import 'rpc.dart';
-import 'state.dart';
 
 class RpcQrScanner implements QrScanner {
   final RpcSession _rpc;

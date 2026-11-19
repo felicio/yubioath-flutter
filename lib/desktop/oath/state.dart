@@ -37,7 +37,6 @@ import '../../oath/state.dart';
 import '../credential_cache.dart';
 import '../models.dart';
 import '../rpc.dart';
-import '../state.dart';
 
 final _log = Logger('desktop.oath.state');
 

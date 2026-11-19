@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:yubico_authenticator/core/sys_io.dart';
 
 import 'package:file_picker/file_picker.dart';
 

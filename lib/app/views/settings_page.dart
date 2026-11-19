@@ -15,7 +15,7 @@
  */
 
 import 'dart:convert';
-import 'dart:io';
+import 'package:yubico_authenticator/core/sys_io.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +27,7 @@ import '../../android/app_methods.dart';
 import '../../android/models.dart';
 import '../../android/state.dart';
 import '../../core/state.dart';
-import '../../desktop/state.dart';
+import '../../desktop/rpc.dart';
 import '../../generated/l10n/app_localizations.dart';
 import '../../version.dart';
 import '../../widgets/basic_dialog.dart';
@@ -36,7 +36,8 @@ import '../../widgets/list_title.dart';
 import '../../widgets/responsive_dialog.dart';
 import '../app_url_launcher.dart';
 import '../icon_provider/icon_pack.dart';
-import '../icon_provider/icon_pack_manager.dart';
+import '../icon_provider/icon_pack_manager_stub.dart'
+    if (dart.library.io) '../icon_provider/icon_pack_manager.dart';
 import '../l10n_utils.dart';
 import '../logging.dart';
 import '../message.dart';

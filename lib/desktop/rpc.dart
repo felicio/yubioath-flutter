@@ -16,9 +16,9 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:async/async.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
 import '../app/logging.dart';
@@ -26,6 +26,11 @@ import '../app/models.dart';
 import 'models.dart';
 
 final _log = Logger('helper');
+
+/// Overridden once a helper transport is attached.
+final rpcProvider = FutureProvider<RpcSession>((ref) {
+  throw UnimplementedError();
+});
 
 class Signaler {
   final _send = StreamController<String>();
@@ -71,11 +76,15 @@ const _py2level = {
   'CRITICAL': Level.SHOUT,
 };
 
+typedef _RpcSend = void Function(String line);
+
 class _RpcConnection {
-  final IOSink _sink;
+  final _RpcSend _send;
+  final Future<void> Function()? _onClose;
   final StreamQueue<RpcResponse> _responses;
-  _RpcConnection(this._sink, Stream<String> stream)
-    : _responses = StreamQueue(
+  _RpcConnection(this._send, Stream<String> stream, {Future<void> Function()? onClose})
+    : _onClose = onClose,
+      _responses = StreamQueue(
         stream.map((event) {
           try {
             return RpcResponse.fromJson(jsonDecode(event));
@@ -87,15 +96,14 @@ class _RpcConnection {
       );
 
   void send(Map data) {
-    _sink.writeln(jsonEncode(data));
+    _send(jsonEncode(data));
   }
 
   Future<RpcResponse> getResponse() => _responses.next;
 
   Future<void> close() async {
-    _sink.writeln('');
+    await _onClose?.call();
     await _responses.cancel();
-    await _sink.close();
   }
 }
 
@@ -103,14 +111,32 @@ class RpcSession {
   final String executable;
   late _RpcConnection _connection;
   final StreamController<_Request> _requests = StreamController();
+  final StreamController<String> _responses = StreamController();
   final StreamController<String> _flags = StreamController();
   late final Stream<String> flags;
+  var _bound = false;
 
   RpcSession(this.executable) {
     flags = _flags.stream.asBroadcastStream();
   }
 
-  static void _logEntry(String entry) {
+  /// Attach a transport. [send] receives one JSON command line. Responses,
+  /// including signals, are delivered through [addResponse].
+  void bind(
+    void Function(String line) send, {
+    Future<void> Function()? onClose,
+  }) {
+    if (_bound) return;
+    _bound = true;
+    _connection = _RpcConnection(send, _responses.stream, onClose: onClose);
+    _pump();
+  }
+
+  void addResponse(String line) {
+    if (!_responses.isClosed) _responses.add(line);
+  }
+
+  static void logStderr(String entry) {
     try {
       final record = jsonDecode(entry);
       var entryLevel = _py2level[record['level']];
@@ -128,25 +154,6 @@ class RpcSession {
     } catch (e) {
       _log.error(entry);
     }
-  }
-
-  Future<void> initialize() async {
-    final process = await Process.start(executable, []);
-    _log.debug('Helper process started');
-    process.stderr
-        .transform(const Utf8Decoder())
-        .transform(const LineSplitter())
-        .listen(_logEntry);
-
-    // Communicate with rpc over stdin/stdout.
-    _connection = _RpcConnection(
-      process.stdin,
-      process.stdout
-          .transform(const Utf8Decoder())
-          .transform(const LineSplitter()),
-    );
-
-    _pump();
   }
 
   Future<Map<String, dynamic>> command(

@@ -18,7 +18,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:local_notifier/local_notifier.dart';
+import 'system_notification.dart'
+    if (dart.library.io) 'system_notification_io.dart';
 
 import '../message.dart';
 
@@ -206,11 +207,11 @@ class _NotificationUserInteractionController extends UserInteractionController {
   String title;
   String description;
   Widget? icon;
-  LocalNotification _notification;
+  SystemNotification _notification;
   _NotificationUserInteractionController({
     required this.title,
     required this.description,
-  }) : _notification = LocalNotification(title: title, body: description)
+  }) : _notification = SystemNotification(title: title, body: description)
          ..show();
 
   @override
@@ -221,7 +222,7 @@ class _NotificationUserInteractionController extends UserInteractionController {
   Future<void> _doUpdateNotification() async {
     await _notification.close();
     await Future.delayed(const Duration(milliseconds: 200));
-    _notification = LocalNotification(title: title, body: description);
+    _notification = SystemNotification(title: title, body: description);
     await _notification.show();
   }
 

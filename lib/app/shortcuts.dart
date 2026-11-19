@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-import 'dart:io';
+import 'package:yubico_authenticator/core/sys_io.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:window_manager/window_manager.dart';
-
+import 'desktop_window_stub.dart'
+    if (dart.library.io) 'desktop_window_io.dart';
 import '../core/state.dart';
-import '../desktop/state.dart';
 import '../generated/l10n/app_localizations.dart';
 import 'message.dart';
 import 'models.dart';
@@ -264,7 +263,7 @@ class GlobalShortcuts extends ConsumerWidget {
     actions: {
       CloseIntent: CallbackAction<CloseIntent>(
         onInvoke: (_) {
-          windowManager.close();
+          closeDesktopWindow();
           return null;
         },
       ),

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import 'dart:io';
+import 'package:yubico_authenticator/core/sys_io.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

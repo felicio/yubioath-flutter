@@ -15,7 +15,7 @@
  */
 
 import 'dart:async';
-import 'dart:io';
+import 'package:yubico_authenticator/core/sys_io.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

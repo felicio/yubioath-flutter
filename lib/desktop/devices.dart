@@ -30,7 +30,6 @@ import '../core/models.dart';
 import '../management/models.dart';
 import 'models.dart';
 import 'rpc.dart';
-import 'state.dart';
 
 // Key prefix used for phantom device entries (PIDs detected but not enumerated).
 const _phantomKeyPrefix = 'pid_';

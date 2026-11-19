@@ -11,6 +11,7 @@ mod qr;
 mod root;
 mod rpc;
 mod util;
+mod web;
 mod yubiotp;
 
 use std::io::Write;
@@ -49,6 +50,12 @@ fn main() {
         .filter_level(log::LevelFilter::Trace)
         .init();
     log::set_max_level(log::LevelFilter::Warn);
+
+    if std::env::args().any(|arg| arg == "--web") {
+        let port = std::env::var("AUTHENTICATOR_HELPER_PORT").unwrap_or_else(|_| "27182".into());
+        web::serve(&format!("127.0.0.1:{port}")).expect("helper web port is unavailable");
+        return;
+    }
 
     let root: Box<dyn rpc::RpcNode> = Box::new(root::RootNode::new());
     rpc::run(root);

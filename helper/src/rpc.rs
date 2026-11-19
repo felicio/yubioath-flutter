@@ -43,7 +43,7 @@ pub fn run(root: Box<dyn RpcNode>) {
 }
 
 /// Core RPC loop: reads commands, dispatches to NodeHost, sends responses.
-fn run_rpc_loop(
+pub(crate) fn run_rpc_loop(
     root: Box<dyn RpcNode>,
     send: SendFn,
     mut recv: Box<dyn FnMut() -> Option<String> + Send>,

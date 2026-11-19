@@ -16,7 +16,7 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:yubico_authenticator/core/sys_io.dart';
 
 import 'package:args/args.dart';
 import 'package:flutter/foundation.dart';
@@ -55,6 +55,7 @@ import 'otp/state.dart';
 import 'piv/state.dart';
 import 'qr_scanner.dart';
 import 'rpc.dart';
+import 'rpc_process.dart';
 import 'state.dart';
 import 'systray.dart';
 import 'window_manager_helper/defaults.dart';
@@ -314,7 +315,7 @@ Future<Widget> initialize(List<String> argv) async {
 Future<RpcSession> _initHelper(String exe) async {
   _log.info('Starting Helper subprocess: $exe');
   final rpc = RpcSession(exe);
-  await rpc.initialize();
+  await rpc.startHelperProcess();
   _log.info('Helper process started');
   await rpc.setLogLevel(Logger.root.level);
   _log.info('Helper log level set');

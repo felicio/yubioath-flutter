@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:yubico_authenticator/core/sys_io.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,7 +26,8 @@ import 'package:vector_graphics/vector_graphics.dart';
 import '../../widgets/delayed_visibility.dart';
 import 'icon_file_loader.dart';
 import 'icon_pack.dart';
-import 'icon_pack_manager.dart';
+import 'icon_pack_manager_stub.dart'
+    if (dart.library.io) 'icon_pack_manager.dart';
 
 class IconPackIcon extends ConsumerWidget {
   final Widget defaultWidget;
@@ -89,19 +92,26 @@ class IconPackIcon extends ConsumerWidget {
   }
 
   Widget _decodeRasterImage(WidgetRef ref, File file) {
-    return ClipOval(
-      // This clipper makes the oval small enough to hide artifacts
-      // on the oval border for images not supporting transparency.
-      clipper: _AccountIconClipper(_width, _height),
-      child: Image.file(
-        file,
-        filterQuality: .medium,
-        fit: .cover,
-        alignment: Alignment.center,
-        width: _width,
-        height: _height,
-        errorBuilder: (_, _, _) => defaultWidget,
-      ),
+    return FutureBuilder<Uint8List>(
+      future: file.readAsBytes(),
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        if (bytes == null || bytes.isEmpty) return defaultWidget;
+        return ClipOval(
+          // This clipper makes the oval small enough to hide artifacts
+          // on the oval border for images not supporting transparency.
+          clipper: _AccountIconClipper(_width, _height),
+          child: Image.memory(
+            bytes,
+            filterQuality: .medium,
+            fit: .cover,
+            alignment: Alignment.center,
+            width: _width,
+            height: _height,
+            errorBuilder: (_, _, _) => defaultWidget,
+          ),
+        );
+      },
     );
   }
 }

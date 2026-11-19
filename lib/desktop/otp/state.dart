@@ -26,7 +26,6 @@ import '../../core/models.dart';
 import '../../otp/models.dart';
 import '../../otp/state.dart';
 import '../rpc.dart';
-import '../state.dart';
 
 final _log = Logger('desktop.otp.state');
 
