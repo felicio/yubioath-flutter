@@ -42,6 +42,43 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script>
+    function ykBytesToBase64(bytes) {
+      var binary = '';
+      for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+    window.ykCreateAttestation = function () {
+      if (!navigator.credentials || !navigator.credentials.create) {
+        return Promise.reject(new Error('This browser cannot create a FIDO attestation.'));
+      }
+      var challenge = new Uint8Array(32);
+      var user = new Uint8Array(16);
+      crypto.getRandomValues(challenge);
+      crypto.getRandomValues(user);
+      return navigator.credentials.create({
+        publicKey: {
+          challenge: challenge,
+          rp: { name: 'Yubico Authenticator' },
+          user: { id: user, name: 'genuine-check', displayName: 'Genuine check' },
+          pubKeyCredParams: [
+            { type: 'public-key', alg: -7 },
+            { type: 'public-key', alg: -257 }
+          ],
+          authenticatorSelection: {
+            residentKey: 'discouraged',
+            userVerification: 'discouraged'
+          },
+          attestation: 'direct',
+          timeout: 60000
+        }
+      }).then(function (credential) {
+        var response = credential.response;
+        return {
+          attestationObject: ykBytesToBase64(new Uint8Array(response.attestationObject)),
+          clientDataJSON: ykBytesToBase64(new Uint8Array(response.clientDataJSON))
+        };
+      });
+    };
     setInterval(function () {
       if (window.$dartMainExecuted) return;
       if (!window.$dartMainTearOffs || !window.$dartMainTearOffs.length) return;

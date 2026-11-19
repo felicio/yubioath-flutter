@@ -3,6 +3,7 @@ mod connection;
 mod devices;
 mod error;
 mod fido;
+mod genuine;
 mod management;
 mod monitor;
 mod oath;

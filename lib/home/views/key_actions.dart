@@ -29,6 +29,7 @@ import '../../core/models.dart';
 import '../../core/state.dart';
 import '../../generated/l10n/app_localizations.dart';
 import '../../management/views/management_screen.dart';
+import 'genuine_action.dart' if (dart.library.io) 'genuine_action_stub.dart';
 
 Widget homeBuildActions(
   BuildContext context,
@@ -99,6 +100,7 @@ Widget homeBuildActions(
                 );
               },
             ),
+          ...genuineActions(context, ref, deviceData),
         ],
       ),
     ],

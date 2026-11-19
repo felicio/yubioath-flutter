@@ -29,7 +29,7 @@ impl RpcNode for RootNode {
     }
 
     fn list_actions(&self) -> Vec<&'static str> {
-        vec!["diagnose", "logging", "qr"]
+        vec!["diagnose", "genuine", "logging", "qr"]
     }
 
     fn list_children(&mut self) -> BTreeMap<String, Value> {
@@ -42,8 +42,8 @@ impl RpcNode for RootNode {
         &mut self,
         action: &str,
         params: &Value,
-        _signal: SignalFn,
-        _cancel: &AtomicBool,
+        signal: SignalFn,
+        cancel: &AtomicBool,
     ) -> Result<RpcResponse, RpcError> {
         match action {
             "diagnose" => {
@@ -64,6 +64,7 @@ impl RpcNode for RootNode {
                 ykman::logging::set_log_level(log_level);
                 Ok(RpcResponse::new(json!({})))
             }
+            "genuine" => crate::genuine::check(params, signal, cancel),
             "qr" => {
                 let image = params.get("image").and_then(|v| v.as_str());
                 match crate::qr::scan_qr(image) {
@@ -94,7 +95,7 @@ impl RpcNode for RootNode {
 
     fn action_closes_child(&self, action: &str) -> bool {
         // logging and qr don't close children
-        !matches!(action, "logging" | "qr")
+        !matches!(action, "genuine" | "logging" | "qr")
     }
 
     fn retains_children(&self) -> bool {
