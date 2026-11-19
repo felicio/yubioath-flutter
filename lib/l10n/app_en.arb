@@ -200,6 +200,9 @@
 
     "l_insert_yk": "Insert your YubiKey",
     "l_insert_or_tap_yk": "Insert or tap a YubiKey",
+    "l_ios_hold_yk": "Hold your YubiKey near the top of your iPhone",
+    "l_ios_wired_yk": "A USB-C or Lightning YubiKey is used while it is plugged in.",
+    "s_scan_yubikey": "Scan YubiKey",
     "l_unplug_yk": "Unplug your YubiKey",
     "l_reinsert_yk": "Reinsert your YubiKey",
     "l_place_on_nfc_reader": "Place your YubiKey on the NFC reader",

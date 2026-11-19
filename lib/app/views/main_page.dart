@@ -15,6 +15,7 @@
  */
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -27,10 +28,12 @@ import '../../fido/views/webauthn_page.dart';
 import '../../generated/l10n/app_localizations.dart';
 import '../../home/views/home_message_page.dart';
 import '../../home/views/home_screen.dart';
+import '../../ios/yubikey.dart';
 import '../../oath/views/oath_screen.dart';
 import '../../oath/views/utils.dart';
 import '../../otp/views/otp_screen.dart';
 import '../../piv/views/piv_screen.dart';
+import '../message.dart';
 import '../models.dart';
 import '../state.dart';
 import 'device_error_screen.dart';
@@ -133,6 +136,28 @@ class MainPage extends ConsumerWidget {
                     .read(currentSectionProvider.notifier)
                     .setCurrentSection(Section.accounts);
                 await addOathAccount(context, ref);
+              },
+            ),
+          ],
+        );
+      } else if (isIOS) {
+        return HomeMessagePage(
+          centered: true,
+          delayedContent: false,
+          graphic: noKeyIcon,
+          header: l10n.l_ios_hold_yk,
+          message: l10n.l_ios_wired_yk,
+          actionsBuilder: (context, expanded) => [
+            FilledButton.icon(
+              label: Text(l10n.s_scan_yubikey),
+              icon: const Icon(Symbols.contactless),
+              onPressed: () async {
+                try {
+                  await ref.read(iosYubiKeyProvider.notifier).scan();
+                } on PlatformException catch (error) {
+                  if (error.code == 'cancelled' || !context.mounted) return;
+                  showMessage(context, error.message ?? error.code);
+                }
               },
             ),
           ],

@@ -17,8 +17,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -28,6 +31,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/state.dart';
 import '../../generated/l10n/app_localizations.dart';
+import '../../ios/yubikey.dart';
 import '../../management/models.dart';
 import '../../widgets/delayed_visibility.dart';
 import '../../widgets/ensure_focus_visible.dart';
@@ -36,6 +40,7 @@ import '../message.dart';
 import '../shortcuts.dart';
 import '../state.dart';
 import 'fs_dialog.dart';
+import 'ios_navigation.dart';
 import 'keys.dart';
 import 'navigation.dart';
 
@@ -159,6 +164,14 @@ class _AppPageState extends ConsumerState<AppPage> {
         key: layoutGlobalKey,
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          if (isIOS &&
+              math.min(constraints.maxWidth, constraints.maxHeight) < 600) {
+            return _buildIosPhoneScaffold(context);
+          }
+          if (isIOS) {
+            final wide = width >= 1000;
+            return _buildScaffold(context, false, true, wide);
+          }
           if (width < 400 ||
               (isAndroid && width < 600 && width < constraints.maxHeight)) {
             return _buildScaffold(context, true, false, false);
@@ -638,6 +651,56 @@ class _AppPageState extends ConsumerState<AppPage> {
         }
       }
     }
+  }
+
+  Future<void> _scanYubiKey(BuildContext context) async {
+    try {
+      await ref.read(iosYubiKeyProvider.notifier).scan();
+    } on PlatformException catch (error) {
+      if (error.code == 'cancelled' || !context.mounted) return;
+      showMessage(context, error.message ?? error.code);
+    }
+  }
+
+  Widget _buildIosPhoneScaffold(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    var body = _buildMainContent(context, false);
+    if (widget.onFileDropped != null) {
+      body = FileDropTarget(
+        onFileDropped: widget.onFileDropped!,
+        overlay: widget.fileDropOverlay!,
+        child: body,
+      );
+    }
+    return Scaffold(
+      key: scaffoldGlobalKey,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        scrolledUnderElevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: const SizedBox.shrink(),
+        actions: [
+          IconButton(
+            tooltip: l10n.s_scan_yubikey,
+            onPressed: () => _scanYubiKey(context),
+            icon: const Icon(Symbols.contactless),
+          ),
+          if (widget.keyActionsBuilder != null)
+            IconButton(
+              key: actionsIconButtonKey,
+              tooltip: l10n.s_show_menu,
+              onPressed: () => _handleDetailViewVisibility(context, false),
+              icon: Icon(
+                Symbols.more_horiz,
+                semanticLabel: l10n.s_show_menu,
+              ),
+            ),
+        ],
+      ),
+      body: body,
+      bottomNavigationBar: const IosPhoneTabBar(),
+    );
   }
 
   Widget _buildScaffold(

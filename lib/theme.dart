@@ -76,10 +76,17 @@ class AppTheme {
     final focusBorder = isAndroid ? null : _focusBorderSide(colorScheme);
     final focusButtonStyle = ButtonStyle(side: focusBorder);
 
+    final iosGrouped = isIOS
+        ? (brightness == Brightness.light
+              ? const Color(0xFFF2F2F7)
+              : const Color(0xFF000000))
+        : null;
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: defaultFontFamily,
+      scaffoldBackgroundColor: iosGrouped,
+      canvasColor: iosGrouped,
       textButtonTheme: TextButtonThemeData(style: focusButtonStyle),
       elevatedButtonTheme: ElevatedButtonThemeData(style: focusButtonStyle),
       outlinedButtonTheme: OutlinedButtonThemeData(style: focusButtonStyle),

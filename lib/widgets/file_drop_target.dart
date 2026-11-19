@@ -64,7 +64,7 @@ class _FileDropTargetState extends State<FileDropTarget> {
           }
         }
       },
-      enable: !isAndroid,
+      enable: isDesktop,
       child: Stack(
         fit: .expand,
         children: [

@@ -28,6 +28,7 @@ import 'app/state.dart';
 import 'core/state.dart';
 import 'desktop/init.dart' as desktop;
 import 'error_page.dart';
+import 'ios/init.dart' as ios;
 import 'theme.dart';
 import 'version.dart';
 
@@ -43,6 +44,8 @@ void main(List<String> argv) async {
       initializedApp = await desktop.initialize(argv);
     } else if (isAndroid) {
       initializedApp = await android.initialize();
+    } else if (isIOS) {
+      initializedApp = await ios.initialize();
     } else {
       _initializeDebugLogging();
       throw UnimplementedError('Platform not supported');
