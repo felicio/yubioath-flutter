@@ -136,23 +136,89 @@ where <os> is "windows", "macos", "linux", or an attached Android device name.
 use `flutter devices` to list available devices.
 
 On macOS, an iOS simulator build uses the same command with a simulator name.
-iPhone 18 Pro on the installed iOS 27.2 runtime:
+Boot the simulator first. Flutter only lists simulators that are already
+booted. List the installed runtimes, then boot one by the name `simctl` prints:
 
+    xcrun simctl list devices available
+    xcrun simctl boot "iPhone 18 Pro"
     flutter run -d "iPhone 18 Pro"
 
-The iPhone layout uses a tab bar. The simulator cannot see a YubiKey. A
-physical iPhone can: NFC (tap Scan), USB-C smart card on iOS 16 or later, and
-a YubiKey 5Ci over Lightning (`com.yubico.ylp`). The app links YubiKit Swift
-1.4.0 and declares the NFC reader entitlement plus `com.apple.security.smartcard`.
-Plug the phone in, or use the wireless device listed by `flutter devices`, then:
+Xcode 27 has no Simulator.app. Device Hub is
+`/Applications/Xcode.app/Contents/Applications/DeviceHub.app`. Focus a booted
+simulator with `open "devices://device/open?id=<UDID>"`. The UDID comes from
+`xcrun simctl list devices`.
 
-    flutter run -d <iphone>
+The iPhone layout uses a tab bar. The simulator cannot see a YubiKey. The app
+links YubiKit Swift 1.4.0. The deployment target is iOS 16. The desktop helper
+is not used. Enable the iOS embedder first with `flutter config --enable-ios`.
+The Xcode project is `ios/Runner.xcworkspace`.
 
-Enable the iOS embedder first with `flutter config --enable-ios`. The Xcode
-project is `ios/Runner.xcworkspace`, and its bundle id is `com.yubico.yubioath`.
-The deployment target is iOS 16. The desktop helper is not used.
+==== Running on a physical iPhone
 
-You can add the `--release` flag to run a release build instead of debug.
+Turn on Developer Mode on the phone: Settings → Privacy & Security →
+Developer Mode. Until that is on, `flutter devices` can show the phone as
+connected with no developer disk image, and `flutter run` tells you to enable
+Developer Mode. Pass that command's identifier to `flutter run -d`.
+
+Each developer keeps a team id and bundle id outside the project. Copy the
+example and fill in both values:
+
+    cp ios/Flutter/Local.xcconfig.example ios/Flutter/Local.xcconfig
+
+`Local.xcconfig` is gitignored. `Debug.xcconfig` and `Release.xcconfig` include
+it after `Signing.xcconfig`, so the local file overrides the committed default
+`com.yubico.yubioath`. The Runner target reads
+`$(APP_BUNDLE_IDENTIFIER)` and `$(LOCAL_DEVELOPMENT_TEAM)`. The Team ID is the
+10-character id under Xcode → Settings → Accounts. Leave those `$(...)`
+references in `project.pbxproj`. Choosing a team in Signing & Capabilities
+replaces them with a literal. Put the literal back to the variable instead of
+committing a team id.
+
+Sign in before the first device build. The status "Signing for Runner requires
+a development team" is not a sign-in button. In the Xcode menu bar, choose
+Settings → Accounts, click +, and add an Apple ID. With no certificate, the
+build stops at "No valid code signing certificates were found."
+
+A personal team cannot register `com.yubico.yubioath`. Xcode reports that the
+identifier is not available, so set `APP_BUNDLE_IDENTIFIER` in
+`Local.xcconfig` to one that team can register. The same team cannot provision
+NFC Tag Reading or the smart-card entitlement. With either key in
+`ios/Runner/Runner.entitlements`, automatic signing fails with "Personal
+development teams do not support the NFC Tag Reading capability" and creates
+no profile. Leave that file empty for a personal team. Restore
+`com.apple.developer.nfc.readersession.formats` (NDEF and TAG) and
+`com.apple.security.smartcard` only when a paid team is selected. A paid team
+that owns `com.yubico.yubioath` can omit `Local.xcconfig` and use the default.
+
+`Info.plist` still has `NFCReaderUsageDescription`, the ISO 7816 AIDs, and
+`UISupportedExternalAccessoryProtocols` set to `com.yubico.ylp`. Those keys do
+not grant NFC or USB-C. Without the NFC entitlement,
+`NFCReaderSession.readingAvailable` is false on a physical iPhone, and YubiKit
+throws `SmartCardConnectionError.unsupported`. That is a missing capability,
+not a simulator. Scan says NFC is not included in this install. A Lightning
+YubiKey 5Ci still connects through `com.yubico.ylp`. NFC and USB-C smart card
+need the paid team.
+
+The first launch is denied until the phone trusts the certificate. On the
+iPhone, open Settings → General → VPN & Device Management, select the
+developer app, and tap Trust. Before that, launch fails with "its profile has
+not been explicitly trusted by the user."
+
+A debug build opened from the home screen, or with
+`xcrun devicectl device process launch`, shows the iOS 14 message that debug
+apps must be started by Flutter or Xcode. `flutter run -d <udid>` is that
+start, but it also needs Local Network permission for the process that runs
+Flutter. Without it, install can succeed and the Dart VM connection fails with
+`SocketException` errno 65 on port 5353. Grant it in System Settings →
+Privacy & Security → Local Network.
+
+A release build opens from the home screen without that session:
+
+    flutter build ios --release
+    xcrun devicectl device install app --device <udid> build/ios/iphoneos/Runner.app
+    xcrun devicectl device process launch --device <udid> <bundle id>
+
+You can add the `--release` flag to `flutter run` for a desktop release build.
 
 === Building the app
 To build the app without running it, use:
